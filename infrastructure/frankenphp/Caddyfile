@@ -1,0 +1,48 @@
+{
+    auto_https disable_redirects
+    frankenphp
+}
+
+:443 {
+    tls /etc/ssl/frankenphp/cert.pem /etc/ssl/frankenphp/key.pem
+
+    root * /app/public
+    php_server
+
+    encode gzip
+    file_server
+
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    log {
+        format json
+        level DEBUG
+    }
+
+    # Redirect HTTP to HTTPS
+    @http {
+        protocol http
+    }
+    redir @http https://{host}{uri} permanent
+
+    # Serve static files
+    @static {
+        file
+        path *.ico *.css *.js *.gif *.jpg *.jpeg *.png *.svg *.woff *.woff2
+    }
+    handle @static {
+        file_server
+    }
+
+    @websocket {
+        header Connection *Upgrade*
+        header Upgrade websocket
+    }
+    reverse_proxy @websocket https://127.0.0.1:8080
+} 
